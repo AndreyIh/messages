@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+    {% block title %} Чат {% endblock title %}
+
+{% block content %}
+    <!-- block with buttons for ordering and filter-->
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <p>
+                <a href="{% url 'chat:home' %}" class="btn btn-sm btn-dark">Сбросить <br> все фильтры</a>
+                <a href="{% url 'chat:home_sorted' author=author reverse='False' time=time %}" class="btn btn-sm btn-dark">Сообщения <br> от старых к новым</a>
+                <a href="{% url 'chat:home_sorted' author=author reverse='True' time=time  %}" class="btn btn-sm btn-dark">Сообщения <br> от новых к старым</a>
+                <a href="{% url 'chat:home_sorted' author=author reverse=reverse time=24  %}" class="btn btn-sm btn-dark">Сообщения за последние <br> 24 часа</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- main block with messages-->
+    <div class="row">
+          <div class="col-md">
+              <table class="table table-striped table-bordered">
+                  {% for message in messages %}
+                        <tr>
+                            <td class="text-center">
+                                <a href="{% url 'chat:home_sorted' author=message.author.id reverse=reverse time=time %}" class="btn btn-light btn-sm">      <!--pk=obj.pk-->
+                                       <strong>{{ message.author }}</strong> <br>
+                                        (показать все сообщения автора)
+                                </a><br>
+                                <muted>{{ message.create_time|date:"d.m.Y H:i"}}</muted>
+                            </td>
+                            <td>
+                                {{ message.content|safe }}
+                            </td>
+                            <td>
+                                {% if message.media_file %}
+                                    <img height="150" src="{{ message.media_file.url }}" alt="--">
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                  {% endfor %}
+              </table>
+          </div>
+    </div>
+
+    <!-- Block with form   -->
+    <!-- Include stylesheet for quill -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <div class="row">
+        <div class="col-md">
+            <form method="post" enctype="multipart/form-data">{% csrf_token %}
+                <table>
+                    <!-- Quill add to textarea with class quill-editor -->
+                    {{ form.as_table }}
+                </table>
+                <output id="list"></output>
+                <div class="row">
+                    <div class="col-auto">
+                        <input class="btn  btn-primary" type="submit" value="Отправить">
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+{% endblock content %}
+{% block scripts %}
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script>
+    //activate quill editor for content message
+    var toolbarOptions = [
+      ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+      ['blockquote', 'code-block', 'code', 'link'],
+      [{ 'header': 1 }, { 'header': 2 }],               // custom button values
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
+      [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
+      [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+      [{ 'align': [] }],
+      ['image'],
+      ['clean']                                         // remove formatting button
+    ];
+    $('.quill-editor').each(function(i, el) {
+    var el = $(this), id = 'quilleditor-' + i, val = el.val(), editor_height = 200;
+    var div = $('<div/>').attr('id', id).css('height', editor_height + 'px').html(val);
+    el.addClass('d-none');
+    el.parent().append(div);
+    var quill = new Quill('#' + id, {
+        modules: { toolbar: toolbarOptions },
+        theme: 'snow'
+    });
+    quill.on('text-change', function() {
+        var justHtml = quill.root.innerHTML;
+        document.getElementById("id_content").innerHTML = justHtml;
+    });
+    });
+
+    //activation image preview
+    function handleFileSelect(evt) {
+    var files = evt.target.files; // FileList object
+    // Loop through the FileList and render image files as thumbnails.
+    var tmp_list = document.getElementById('list')
+    tmp_list.innerHTML = ''
+    for (var i = 0, f; f = files[i]; i++) {
+      // Only process image files.
+      if (!f.type.match('image.*')) {
+        continue;
+      }
+      var reader = new FileReader();
+      // Closure to capture the file information.
+      reader.onload = (function(theFile) {
+        return function(e) {
+          // Render thumbnail.
+          var span = document.createElement('span');
+          span.innerHTML = ['<img class="thumb" height=300px, src="', e.target.result,
+                            '" title="', theFile.name, '"/>'].join('');
+          tmp_list.insertBefore(span, null);
+        };
+      })(f);
+          // Read in the image file as a data URL.
+          reader.readAsDataURL(f);
+        }
+      }
+    document.getElementById('media_files').addEventListener('change', handleFileSelect, false);
+</script>
+{% endblock scripts %}
