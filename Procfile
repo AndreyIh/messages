@@ -1,1 +1,1 @@
-web: gunicorn travel.wsgi --log-file –
+web: gunicorn testtask.wsgi --log-file –
